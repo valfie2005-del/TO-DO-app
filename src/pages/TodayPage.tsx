@@ -22,6 +22,7 @@ import {
   getCurrentStreak,
   getBestStreak,
 } from '@/utils/streaks'
+import { formatTimeDisplay } from '@/utils/validation'
 import { cn } from '@/lib/utils'
 
 function greeting(): string {
@@ -208,7 +209,12 @@ export function TodayPage() {
                         <TaskRow
                           key={task.id}
                           title={task.title}
-                          subtitle={dayNum ? `Day ${dayNum} of ${task.duration_days}` : undefined}
+                          subtitle={[
+                            dayNum ? `Day ${dayNum} of ${task.duration_days}` : null,
+                            formatTimeDisplay(task.reminder_time),
+                          ]
+                            .filter(Boolean)
+                            .join(' · ') || undefined}
                           checked={done}
                           onToggle={() => void toggle(task.id, selectedDate)}
                         />
@@ -227,6 +233,7 @@ export function TodayPage() {
                         <TaskRow
                           key={task.id}
                           title={task.title}
+                          subtitle={formatTimeDisplay(task.reminder_time) ?? undefined}
                           checked={done}
                           onToggle={() => void toggle(task.id, selectedDate)}
                         />

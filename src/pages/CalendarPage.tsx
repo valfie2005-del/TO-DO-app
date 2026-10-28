@@ -22,6 +22,7 @@ import { AddTaskModal } from '@/components/tasks/AddTaskModal'
 import { formatDateKey, getLocalToday, isTaskScheduledForDate, getChallengeDayNumber } from '@/utils/dates'
 import { getDailyProgress } from '@/utils/streaks'
 import { cn } from '@/lib/utils'
+import { formatTimeDisplay } from '@/utils/validation'
 
 /** Monday-first weekday index: Mon=0 … Sun=6 */
 function mondayIndex(date: Date): number {
@@ -240,9 +241,14 @@ export function CalendarPage() {
                       >
                         {task.title}
                       </p>
-                      {dayNum && (
+                      {(dayNum || task.reminder_time) && (
                         <p className="text-xs text-[#8B95B3]">
-                          Day {dayNum} of {task.duration_days}
+                          {[
+                            dayNum ? `Day ${dayNum} of ${task.duration_days}` : null,
+                            formatTimeDisplay(task.reminder_time),
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
                         </p>
                       )}
                     </div>

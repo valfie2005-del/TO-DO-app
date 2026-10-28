@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod'
-import type { DateKey, TaskType } from '@/types'
+import type { DateKey, TaskType, TimeKey } from '@/types'
 import { assertDateKey, getChallengeEndDate } from './dates'
 
 export const taskTitleSchema = z
@@ -31,16 +31,23 @@ export const dateKeySchema = z
     }
   }, 'Invalid calendar date')
 
+/** Optional HH:mm (24h). Empty string → null */
+export const timeKeySchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Time must be HH:mm')
+  .optional()
+  .or(z.literal(''))
+
 export const createTaskSchema = z
   .object({
     title: taskTitleSchema,
     type: z.enum(['challenge', 'single']),
     start_date: dateKeySchema,
     duration_days: durationSchema.optional(),
+    reminder_time: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.type === 'single') {
-      // force duration 1
       if (data.duration_days !== undefined && data.duration_days !== 1) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -57,9 +64,26 @@ export const createTaskSchema = z
         })
       }
     }
+    const t = data.reminder_time?.trim()
+    if (t && !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Time must be HH:mm (24-hour)',
+        path: ['reminder_time'],
+      })
+    }
   })
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>
+
+function normalizeTime(value?: string): TimeKey | null {
+  const t = value?.trim()
+  if (!t) return null
+  // Accept HH:mm or HH:mm:ss from <input type="time">
+  const match = t.match(/^([01]\d|2[0-3]):([0-5]\d)/)
+  if (!match) return null
+  return `${match[1]}:${match[2]}`
+}
 
 /** Normalize create payload for insert */
 export function normalizeCreateTask(input: CreateTaskInput): {
@@ -68,11 +92,25 @@ export function normalizeCreateTask(input: CreateTaskInput): {
   start_date: DateKey
   duration_days: number
   due_date: DateKey
+  reminder_time: TimeKey | null
 } {
   const title = input.title.trim()
   const type = input.type
   const start_date = assertDateKey(input.start_date)
   const duration_days = type === 'single' ? 1 : (input.duration_days as number)
   const due_date = getChallengeEndDate(start_date, duration_days)
-  return { title, type, start_date, duration_days, due_date }
+  const reminder_time = normalizeTime(input.reminder_time)
+  return { title, type, start_date, duration_days, due_date, reminder_time }
+}
+
+/** Format HH:mm for display (e.g. 09:30 → 9:30 AM) */
+export function formatTimeDisplay(time: string | null | undefined): string | null {
+  if (!time) return null
+  const match = time.match(/^(\d{1,2}):(\d{2})/)
+  if (!match) return time
+  let h = parseInt(match[1], 10)
+  const m = match[2]
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  h = h % 12 || 12
+  return `${h}:${m} ${ampm}`
 }

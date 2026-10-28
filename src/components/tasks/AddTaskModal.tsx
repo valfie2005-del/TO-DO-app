@@ -19,10 +19,19 @@ const schema = z
       .min(1, 'Date is required')
       .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a valid date'),
     duration_days: z.coerce.number().int().min(1, 'Min 1 day').max(365, 'Max 365 days'),
+    reminder_time: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.type === 'challenge' && data.duration_days < 1) {
       ctx.addIssue({ code: 'custom', message: 'Duration is required', path: ['duration_days'] })
+    }
+    const t = data.reminder_time?.trim()
+    if (t && !/^([01]\d|2[0-3]):[0-5]\d/.test(t)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Pick a valid time',
+        path: ['reminder_time'],
+      })
     }
   })
 
@@ -56,6 +65,7 @@ export function AddTaskModal({ onCreate }: AddTaskModalProps) {
       type: 'challenge',
       start_date: getLocalToday(),
       duration_days: 40,
+      reminder_time: '',
     },
   })
 
@@ -74,6 +84,7 @@ export function AddTaskModal({ onCreate }: AddTaskModalProps) {
         type: defaults.type ?? 'challenge',
         start_date: start,
         duration_days: defaults.type === 'single' ? 1 : 40,
+        reminder_time: '',
       })
     }
   }, [open, defaults, selectedDate, reset])
@@ -96,6 +107,7 @@ export function AddTaskModal({ onCreate }: AddTaskModalProps) {
         type: values.type,
         start_date: values.start_date,
         duration_days: values.type === 'single' ? 1 : values.duration_days,
+        reminder_time: values.reminder_time?.trim() || undefined,
       })
       close()
     } catch (err) {
@@ -141,12 +153,21 @@ export function AddTaskModal({ onCreate }: AddTaskModalProps) {
           />
         </div>
 
-        <Input
-          label={type === 'challenge' ? 'Start date' : 'Date'}
-          type="date"
-          error={errors.start_date?.message}
-          {...register('start_date')}
-        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Input
+            label={type === 'challenge' ? 'Start date' : 'Date'}
+            type="date"
+            error={errors.start_date?.message}
+            {...register('start_date')}
+          />
+          <Input
+            label="Time (optional)"
+            type="time"
+            error={errors.reminder_time?.message}
+            hint="When you plan to do it"
+            {...register('reminder_time')}
+          />
+        </div>
 
         {type === 'challenge' && (
           <>

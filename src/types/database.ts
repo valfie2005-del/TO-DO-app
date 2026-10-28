@@ -23,6 +23,7 @@ export interface Database {
           start_date: string
           duration_days: number
           due_date: string | null
+          reminder_time: string | null
           created_at: string
         }
         Insert: {
@@ -33,6 +34,7 @@ export interface Database {
           start_date: string
           duration_days: number
           due_date?: string | null
+          reminder_time?: string | null
           created_at?: string
         }
         Update: {
@@ -43,6 +45,7 @@ export interface Database {
           start_date?: string
           duration_days?: number
           due_date?: string | null
+          reminder_time?: string | null
           created_at?: string
         }
         Relationships: []

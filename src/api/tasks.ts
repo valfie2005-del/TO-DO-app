@@ -49,6 +49,7 @@ export async function createTask(input: CreateTaskInput): Promise<TaskRow> {
       start_date: normalized.start_date,
       duration_days: normalized.duration_days,
       due_date: normalized.due_date,
+      reminder_time: normalized.reminder_time,
     })
     .select()
     .single()
