@@ -309,7 +309,7 @@ function ConfettiBurst() {
             style={{ left: `${left}%`, background: color }}
             initial={{ y: 0, opacity: 1, rotate: 0 }}
             animate={{ y: 280, opacity: 0, rotate: 200 }}
-            transition={{ duration: 1.4, delay, ease: 'easeOut' }}
+            transition={{ duration: 1.4, delay }}
           />
         )
       })}
