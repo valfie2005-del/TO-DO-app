@@ -24,7 +24,6 @@ export function ProgressRing({
   const radius = (size - strokeWidth) / 2
   const circumference = 2 * Math.PI * radius
   const clamped = Math.min(100, Math.max(0, percentage))
-  const offset = circumference - (clamped / 100) * circumference
 
   useEffect(() => {
     const prefersReduced =

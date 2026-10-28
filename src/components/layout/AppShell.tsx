@@ -12,12 +12,9 @@ const navItems = [
   { to: '/calendar', label: 'Calendar', icon: CalendarDays },
 ]
 
-const pageTransition = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -6 },
-  transition: { duration: 0.2, ease: 'easeOut' },
-}
+const pageInitial = { opacity: 0, y: 8 }
+const pageAnimate = { opacity: 1, y: 0 }
+const pageExit = { opacity: 0, y: -6 }
 
 export function AppShell() {
   const { user, signOut } = useAuthStore()
@@ -92,10 +89,10 @@ export function AppShell() {
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
-            initial={pageTransition.initial}
-            animate={pageTransition.animate}
-            exit={pageTransition.exit}
-            transition={pageTransition.transition}
+            initial={pageInitial}
+            animate={pageAnimate}
+            exit={pageExit}
+            transition={{ duration: 0.2 }}
           >
             <Outlet />
           </motion.div>
@@ -120,15 +117,8 @@ export function AppShell() {
                 )
               }
             >
-              {({ isActive }) => (
-                <>
-                  <Icon className="h-5 w-5" aria-hidden />
-                  <span>{label}</span>
-                  {isActive && (
-                    <span className="sr-only">(current)</span>
-                  )}
-                </>
-              )}
+              <Icon className="h-5 w-5" aria-hidden />
+              <span>{label}</span>
             </NavLink>
           ))}
           <button
