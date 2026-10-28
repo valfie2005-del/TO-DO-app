@@ -1,0 +1,124 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #05070D;
+  --color-card: #0B1020;
+  --color-primary: #2F6BFF;
+  --color-cyan: #4CC9FF;
+  --color-text: #E8ECF8;
+  --color-muted: #8B95B3;
+  --color-border: rgba(76, 201, 255, 0.12);
+  --color-glow: rgba(47, 107, 255, 0.35);
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+/* Subtle radial gradients */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 0% 0%, rgba(47, 107, 255, 0.18), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(76, 201, 255, 0.10), transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+#root > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid var(--color-cyan);
+  outline-offset: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(76, 201, 255, 0.2);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(76, 201, 255, 0.35);
+}
+
+/* Screen-reader only utility (Tailwind may not include by default in v4) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+.sr-only:focus,
+.focus\:not-sr-only:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: inherit;
+  margin: inherit;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* Ensure touch targets on mobile */
+@media (max-width: 767px) {
+  button, a, [role="button"], [role="checkbox"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  /* Don't force min size on dense grid tiles */
+  .grid button {
+    min-height: unset;
+    min-width: unset;
+  }
+}
