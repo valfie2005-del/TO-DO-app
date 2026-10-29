@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { format, parseISO } from 'date-fns'
 import { ChevronLeft, ChevronRight, Flame, HeartCrack, Plus, Clock } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
