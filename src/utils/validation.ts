@@ -1,11 +1,7 @@
-/**
- * Shared validation helpers for tasks and completions.
- * Used by both client forms and API layer.
- */
-
 import { z } from 'zod'
 import type { DateKey, TaskType, TimeKey } from '@/types'
 import { assertDateKey, getChallengeEndDate } from './dates'
+import { normalizeTimeKey, timeToMinutes, DEFAULT_GRACE_MINUTES } from './taskStatus'
 
 export const taskTitleSchema = z
   .string()
@@ -31,20 +27,17 @@ export const dateKeySchema = z
     }
   }, 'Invalid calendar date')
 
-/** Optional HH:mm (24h). Empty string → null */
-export const timeKeySchema = z
-  .string()
-  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Time must be HH:mm')
-  .optional()
-  .or(z.literal(''))
-
 export const createTaskSchema = z
   .object({
     title: taskTitleSchema,
     type: z.enum(['challenge', 'single']),
     start_date: dateKeySchema,
     duration_days: durationSchema.optional(),
-    reminder_time: z.string().optional(),
+    description: z.string().max(500).optional(),
+    start_time: z.string().optional(),
+    end_time: z.string().optional(),
+    reminder_time: z.string().optional(), // legacy alias
+    grace_minutes: z.coerce.number().int().min(0).max(180).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.type === 'single') {
@@ -55,55 +48,70 @@ export const createTaskSchema = z
           path: ['duration_days'],
         })
       }
-    } else {
-      if (data.duration_days === undefined) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Duration is required for challenges',
-          path: ['duration_days'],
-        })
-      }
-    }
-    const t = data.reminder_time?.trim()
-    if (t && !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) {
+    } else if (data.duration_days === undefined) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Time must be HH:mm (24-hour)',
-        path: ['reminder_time'],
+        message: 'Duration is required for challenges',
+        path: ['duration_days'],
+      })
+    }
+
+    const start = normalizeTimeKey(data.start_time || data.reminder_time)
+    const end = normalizeTimeKey(data.end_time)
+    if (data.end_time?.trim() && !end) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid end time', path: ['end_time'] })
+    }
+    if (data.start_time?.trim() && !start) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid start time', path: ['start_time'] })
+    }
+    // Same-day end must be after start (overnight allowed when end <= start)
+    // Validation only warns if end provided without start
+    if (end && !start) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Start time is required when end time is set',
+        path: ['start_time'],
       })
     }
   })
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>
 
-function normalizeTime(value?: string): TimeKey | null {
-  const t = value?.trim()
-  if (!t) return null
-  // Accept HH:mm or HH:mm:ss from <input type="time">
-  const match = t.match(/^([01]\d|2[0-3]):([0-5]\d)/)
-  if (!match) return null
-  return `${match[1]}:${match[2]}`
-}
-
-/** Normalize create payload for insert */
 export function normalizeCreateTask(input: CreateTaskInput): {
   title: string
   type: TaskType
   start_date: DateKey
   duration_days: number
   due_date: DateKey
+  description: string | null
+  start_time: TimeKey | null
+  end_time: TimeKey | null
   reminder_time: TimeKey | null
+  grace_minutes: number
 } {
   const title = input.title.trim()
   const type = input.type
   const start_date = assertDateKey(input.start_date)
   const duration_days = type === 'single' ? 1 : (input.duration_days as number)
   const due_date = getChallengeEndDate(start_date, duration_days)
-  const reminder_time = normalizeTime(input.reminder_time)
-  return { title, type, start_date, duration_days, due_date, reminder_time }
+  const start_time = normalizeTimeKey(input.start_time || input.reminder_time)
+  const end_time = normalizeTimeKey(input.end_time)
+  const description = input.description?.trim() || null
+  const grace_minutes = input.grace_minutes ?? DEFAULT_GRACE_MINUTES
+  return {
+    title,
+    type,
+    start_date,
+    duration_days,
+    due_date,
+    description,
+    start_time,
+    end_time,
+    reminder_time: start_time, // keep legacy column in sync
+    grace_minutes,
+  }
 }
 
-/** Format HH:mm for display (e.g. 09:30 → 9:30 AM) */
 export function formatTimeDisplay(time: string | null | undefined): string | null {
   if (!time) return null
   const match = time.match(/^(\d{1,2}):(\d{2})/)
@@ -114,3 +122,5 @@ export function formatTimeDisplay(time: string | null | undefined): string | nul
   h = h % 12 || 12
   return `${h}:${m} ${ampm}`
 }
+
+export { timeToMinutes }

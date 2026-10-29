@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { AddTaskModal } from '@/components/tasks/AddTaskModal'
 import { formatDateKey, getLocalToday, isTaskScheduledForDate, getChallengeDayNumber } from '@/utils/dates'
+import { sortTasksChronologically, formatTimeRange, getEffectiveTimes } from '@/utils/taskStatus'
 import { getDailyProgress } from '@/utils/streaks'
 import { cn } from '@/lib/utils'
 import { formatTimeDisplay } from '@/utils/validation'
@@ -64,8 +65,10 @@ export function CalendarPage() {
 
   const selectedTasks = useMemo(
     () =>
-      tasks.filter((t) =>
-        isTaskScheduledForDate(t.start_date, t.duration_days, selectedDate)
+      sortTasksChronologically(
+        tasks.filter((t) =>
+          isTaskScheduledForDate(t.start_date, t.duration_days, selectedDate)
+        )
       ),
     [tasks, selectedDate]
   )

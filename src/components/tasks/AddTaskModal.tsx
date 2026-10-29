@@ -12,31 +12,28 @@ import type { CreateTaskInput } from '@/utils/validation'
 
 const schema = z
   .object({
-    title: z.string().trim().min(1, 'Title is required').max(120, 'Max 120 characters'),
+    title: z.string().trim().min(1, 'Title is required').max(120),
+    description: z.string().max(500).optional(),
     type: z.enum(['challenge', 'single']),
-    start_date: z
-      .string()
-      .min(1, 'Date is required')
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a valid date'),
-    duration_days: z.coerce.number().int().min(1, 'Min 1 day').max(365, 'Max 365 days'),
-    reminder_time: z.string().optional(),
+    start_date: z.string().min(1).regex(/^\d{4}-\d{2}-\d{2}$/),
+    duration_days: z.coerce.number().int().min(1).max(365),
+    start_time: z.string().optional(),
+    end_time: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.type === 'challenge' && data.duration_days < 1) {
-      ctx.addIssue({ code: 'custom', message: 'Duration is required', path: ['duration_days'] })
+      ctx.addIssue({ code: 'custom', message: 'Duration required', path: ['duration_days'] })
     }
-    const t = data.reminder_time?.trim()
-    if (t && !/^([01]\d|2[0-3]):[0-5]\d/.test(t)) {
+    if (data.end_time?.trim() && !data.start_time?.trim()) {
       ctx.addIssue({
         code: 'custom',
-        message: 'Pick a valid time',
-        path: ['reminder_time'],
+        message: 'Start time required when end time is set',
+        path: ['start_time'],
       })
     }
   })
 
 type FormValues = z.infer<typeof schema>
-
 const DURATION_CHIPS = [21, 40, 66, 100]
 
 interface AddTaskModalProps {
@@ -62,10 +59,12 @@ export function AddTaskModal({ onCreate }: AddTaskModalProps) {
     resolver: zodResolver(schema),
     defaultValues: {
       title: '',
+      description: '',
       type: 'challenge',
       start_date: getLocalToday(),
       duration_days: 40,
-      reminder_time: '',
+      start_time: '',
+      end_time: '',
     },
   })
 
@@ -81,10 +80,12 @@ export function AddTaskModal({ onCreate }: AddTaskModalProps) {
         (defaults.type === 'single' ? selectedDate : getLocalToday())
       reset({
         title: '',
+        description: '',
         type: defaults.type ?? 'challenge',
         start_date: start,
         duration_days: defaults.type === 'single' ? 1 : 40,
-        reminder_time: '',
+        start_time: '',
+        end_time: '',
       })
     }
   }, [open, defaults, selectedDate, reset])
@@ -104,15 +105,16 @@ export function AddTaskModal({ onCreate }: AddTaskModalProps) {
     try {
       await onCreate({
         title: values.title,
+        description: values.description,
         type: values.type,
         start_date: values.start_date,
         duration_days: values.type === 'single' ? 1 : values.duration_days,
-        reminder_time: values.reminder_time?.trim() || undefined,
+        start_time: values.start_time?.trim() || undefined,
+        end_time: values.end_time?.trim() || undefined,
       })
       close()
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to create task'
-      setFormError(msg)
+      setFormError(err instanceof Error ? err.message : 'Failed to create task')
     }
   }
 
@@ -121,14 +123,21 @@ export function AddTaskModal({ onCreate }: AddTaskModalProps) {
       open={open}
       onClose={close}
       title="Add task"
-      description="Create a multi-day challenge or a one-day task."
+      description="Set a time window and optional 30-minute grace after the deadline."
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <Input
           label="Title"
-          placeholder="e.g. Morning meditation"
+          placeholder="e.g. Project Learning"
           error={errors.title?.message}
           {...register('title')}
+        />
+
+        <Input
+          label="Description (optional)"
+          placeholder="Notes for this challenge"
+          error={errors.description?.message}
+          {...register('description')}
         />
 
         <div>
@@ -145,27 +154,33 @@ export function AddTaskModal({ onCreate }: AddTaskModalProps) {
                 value={field.value}
                 onChange={(v) => {
                   field.onChange(v)
-                  if (v === 'single') setValue('duration_days', 1)
-                  else setValue('duration_days', 40)
+                  setValue('duration_days', v === 'single' ? 1 : 40)
                 }}
               />
             )}
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Input
+          label={type === 'challenge' ? 'Start date' : 'Date'}
+          type="date"
+          error={errors.start_date?.message}
+          {...register('start_date')}
+        />
+
+        <div className="grid grid-cols-2 gap-3">
           <Input
-            label={type === 'challenge' ? 'Start date' : 'Date'}
-            type="date"
-            error={errors.start_date?.message}
-            {...register('start_date')}
+            label="Start time"
+            type="time"
+            error={errors.start_time?.message}
+            {...register('start_time')}
           />
           <Input
-            label="Time (optional)"
+            label="End / deadline"
             type="time"
-            error={errors.reminder_time?.message}
-            hint="When you plan to do it"
-            {...register('reminder_time')}
+            error={errors.end_time?.message}
+            hint="If end ≤ start, treated as overnight"
+            {...register('end_time')}
           />
         </div>
 
@@ -192,7 +207,7 @@ export function AddTaskModal({ onCreate }: AddTaskModalProps) {
                     className={`rounded-lg px-3 py-1 text-xs font-medium border transition-colors ${
                       duration === d
                         ? 'border-[#4CC9FF] bg-[#4CC9FF]/15 text-[#4CC9FF]'
-                        : 'border-[rgba(76,201,255,0.12)] text-[#8B95B3] hover:border-[rgba(76,201,255,0.3)]'
+                        : 'border-[rgba(76,201,255,0.12)] text-[#8B95B3]'
                     }`}
                   >
                     {d}
@@ -202,7 +217,8 @@ export function AddTaskModal({ onCreate }: AddTaskModalProps) {
             </div>
             {endPreview && (
               <p className="text-xs text-[#8B95B3]">
-                Ends on <span className="text-[#E8ECF8] font-medium">{endPreview}</span>
+                Challenge ends <span className="text-[#E8ECF8] font-medium">{endPreview}</span>
+                {' · '}Grace: 30 min after each daily deadline
               </p>
             )}
           </>

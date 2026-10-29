@@ -114,6 +114,8 @@ export function useTasks() {
         task_id: taskId,
         completed_on: dateKey,
         created_at: new Date().toISOString(),
+        completed_at: new Date().toISOString(),
+        completion_kind: null,
       }
       setCompletions((prev) => [...prev, optimistic])
     }
@@ -138,6 +140,8 @@ export function useTasks() {
           task_id: taskId,
           completed_on: dateKey,
           created_at: new Date().toISOString(),
+          completed_at: new Date().toISOString(),
+          completion_kind: null,
         }
         setCompletions((prev) => [...prev, restored])
       } else {
